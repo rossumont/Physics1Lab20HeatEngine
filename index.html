@@ -1,0 +1,612 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>Heat Engine</title>
+<style>
+:root{--bg:#0B1A2B;--fg:#EDE8DC;--mut:#8C99A8;--g:#7FD4A8;--a:#E8B23A;--line:rgba(237,232,220,.18);--card:rgba(255,255,255,.04)}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+html,body{height:100%;overflow:hidden}
+body{background:var(--bg);color:var(--fg);font-family:-apple-system,"Segoe UI","Noto Sans Thai",Sarabun,sans-serif;display:flex;flex-direction:column;
+background-image:linear-gradient(rgba(127,212,168,.05) 1px,transparent 1px),linear-gradient(90deg,rgba(127,212,168,.05) 1px,transparent 1px);background-size:28px 28px}
+.mono{font-family:ui-monospace,"SF Mono",Menlo,Consolas,monospace}
+header{display:flex;align-items:flex-start;justify-content:space-between;padding:12px 16px 6px;gap:10px}
+h1{font-size:20px;font-weight:800;letter-spacing:.2px}
+.sub{color:var(--mut);font-size:13px;margin-top:2px}
+.hbtn{display:flex;gap:8px;flex-shrink:0}
+.ob{background:transparent;border:1px solid var(--line);color:var(--fg);border-radius:8px;padding:6px 12px;font-size:13px;cursor:pointer}
+.ob:active{background:rgba(255,255,255,.08)}
+#stage{flex:1;position:relative;min-height:0}
+canvas{position:absolute;inset:0;width:100%;height:100%;display:block}
+#chips{display:flex;gap:6px;padding:6px 12px;overflow-x:auto;align-items:center;white-space:nowrap;scrollbar-width:none}
+#chips::-webkit-scrollbar{display:none}
+.gl{color:var(--mut);font-size:12px;margin:0 2px 0 8px}
+.gl:first-child{margin-left:0}
+.chip{border:1px solid var(--line);background:var(--card);color:var(--fg);border-radius:999px;padding:6px 11px;font-size:13px;cursor:pointer}
+.chip.on{border-color:var(--g);color:var(--g);box-shadow:0 0 0 1px var(--g) inset}
+.chip:disabled{opacity:.4;cursor:default}
+.chip.rs{border-style:dashed}
+#bar{margin:4px 12px 8px;background:rgba(11,26,43,.92);border:1px solid var(--line);border-radius:14px;padding:8px 10px;display:flex;align-items:center;gap:10px;box-shadow:0 6px 24px rgba(0,0,0,.45)}
+#act{flex:1;min-width:0;background:rgba(232,178,58,.12);border:1px solid var(--a);color:var(--a);border-radius:10px;padding:10px 12px;font-size:15px;font-weight:700;cursor:pointer;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#act:disabled{opacity:.4}
+#clock{font-size:24px;font-weight:700;letter-spacing:1px;min-width:118px;text-align:center}
+.rb{width:46px;height:46px;border-radius:50%;border:1px solid var(--line);background:transparent;color:var(--fg);font-size:18px;cursor:pointer;flex-shrink:0}
+#play{background:var(--g);color:#0B1A2B;border:none;font-size:18px}
+#credit{text-align:center;color:var(--mut);font-size:11px;padding:0 10px 8px}
+.ov{position:fixed;inset:0;background:rgba(3,10,18,.75);display:none;align-items:center;justify-content:center;z-index:20;padding:14px}
+.ov.show{display:flex}
+.pn{background:#0F2236;border:1px solid var(--line);border-radius:14px;padding:16px;width:min(560px,100%);max-height:92vh;overflow:auto}
+.pn h2{font-size:17px;margin-bottom:10px}
+.pn h3{font-size:14px;color:var(--g);margin:14px 0 6px}
+.pn input{width:100%;background:#0B1A2B;border:1px solid var(--line);color:var(--fg);border-radius:8px;padding:9px;font-size:15px;margin:4px 0}
+.row{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px}
+.btn{background:var(--g);color:#0B1A2B;border:none;border-radius:8px;padding:9px 14px;font-weight:700;font-size:14px;cursor:pointer}
+.btn.s{background:transparent;color:var(--fg);border:1px solid var(--line)}
+.grid2{display:grid;grid-template-columns:1fr 110px;gap:4px 10px;align-items:center;font-size:13px}
+.grid2 input{margin:0;padding:6px}
+table{width:100%;border-collapse:collapse;font-size:13px}
+td,th{border-bottom:1px solid var(--line);padding:5px 4px;text-align:right}
+td:first-child,th:first-child{text-align:left}
+th{color:var(--mut);font-weight:600}
+.note{color:var(--mut);font-size:12px;margin-top:6px;line-height:1.5}
+.err{color:#ff8f8f;font-size:13px;min-height:18px}
+.ok{color:var(--g)}
+#parts{display:flex;gap:6px;margin-top:7px}
+.pb{font-size:12px;padding:4px 10px}
+.pb.on{border-color:var(--g);color:var(--g)}
+label.ck{display:flex;gap:8px;align-items:center;font-size:13px;margin-top:6px}
+label.ck input{width:auto;margin:0}
+#linkOut{font-size:12px}
+</style>
+</head>
+<body>
+<header>
+  <div>
+    <h1 id="ttl">Heat Engine</h1>
+    <div class="sub" id="subt">Air-can engine lifting a mass · P–V cycle</div>
+    <div id="parts"><button class="ob pb on" id="p0">Part 1</button><button class="ob pb" id="p1">Part 2</button></div>
+  </div>
+  <div class="hbtn">
+    <button class="ob" id="langBtn">ไทย</button>
+    <button class="ob" id="tBtn">Teacher</button>
+  </div>
+</header>
+
+<div id="stage"><canvas id="cv"></canvas></div>
+
+<div id="chips"></div>
+
+<div id="bar">
+  <button id="act"></button>
+  <div id="clock" class="mono">00:00.00</div>
+  <button class="rb" id="play">▶</button>
+  <button class="rb" id="rst">↺</button>
+</div>
+<div id="credit"></div>
+
+<!-- password -->
+<div class="ov" id="ovPw"><div class="pn">
+  <h2 id="pwT">Teacher</h2>
+  <input type="password" id="pwIn" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false">
+  <div class="err" id="pwErr"></div>
+  <div class="row"><button class="btn" id="pwOk">OK</button><button class="btn s" data-close>✕</button></div>
+</div></div>
+
+<!-- teacher -->
+<div class="ov" id="ovT"><div class="pn">
+  <h2 id="tT">Teacher panel</h2>
+
+  <h3 id="thH">Expected values (ideal gas, after full heat exchange)</h3>
+  <div id="theory"></div>
+
+  <h3 id="setH">Apparatus settings</h3>
+  <div class="grid2">
+    <span id="lV0">Can + tubing volume V₀ (cm³)</span><input id="iV0" type="number" step="1" class="mono">
+    <span id="lD">Piston diameter (mm)</span><input id="iD" type="number" step="0.1" class="mono">
+    <span id="lMp">Piston + platform mass (g)</span><input id="iMp" type="number" step="1" class="mono">
+    <span id="lTau">Heat-exchange time constant (s)</span><input id="iTau" type="number" step="0.5" class="mono">
+    <span id="lPa">Atmospheric pressure (kPa)</span><input id="iPa" type="number" step="0.1" class="mono">
+  </div>
+  <label class="ck"><input type="checkbox" id="iLock"><span id="lLock">Lock chips in student link (students cannot change m, T_C, T_H)</span></label>
+  <div class="row"><button class="btn" id="apply">Apply</button><button class="btn s" id="mkLink">Copy student link</button></div>
+  <div class="err" id="linkMsg"></div>
+  <input id="linkOut" class="mono" readonly style="display:none">
+
+  <h3 id="cpH">Change password</h3>
+  <input id="cpE" type="email" placeholder="Email" autocapitalize="off" autocorrect="off">
+  <input id="cpA" type="password" placeholder="Account password" autocapitalize="off" autocorrect="off">
+  <input id="cpN" type="password" placeholder="New teacher password" autocapitalize="off" autocorrect="off">
+  <div class="err" id="cpMsg"></div>
+  <div class="row"><button class="btn s" id="cpBtn">Change</button></div>
+
+  <div class="row" style="margin-top:16px"><button class="btn" data-close>Close</button></div>
+</div></div>
+
+<script>
+(function(){
+"use strict";
+/* ---------- helpers ---------- */
+function sha256(str){const b=new TextEncoder().encode(str);const K=[];const H=[];let n=2,c=0;const ip=x=>{for(let i=2;i*i<=x;i++)if(x%i==0)return false;return true};const fr=x=>((x-Math.floor(x))*4294967296)>>>0;while(c<64){if(ip(n)){if(c<8)H[c]=fr(Math.pow(n,1/2));K[c]=fr(Math.pow(n,1/3));c++}n++}
+const l=b.length,bl=((l+9+63)>>6)<<6,m=new Uint8Array(bl);m.set(b);m[l]=0x80;const dv=new DataView(m.buffer);dv.setUint32(bl-4,(l*8)>>>0);dv.setUint32(bl-8,Math.floor(l/536870912));const W=new Uint32Array(64);const r=(x,y)=>(x>>>y)|(x<<(32-y));
+for(let o=0;o<bl;o+=64){for(let i=0;i<16;i++)W[i]=dv.getUint32(o+i*4);for(let i=16;i<64;i++){const s0=r(W[i-15],7)^r(W[i-15],18)^(W[i-15]>>>3),s1=r(W[i-2],17)^r(W[i-2],19)^(W[i-2]>>>10);W[i]=(W[i-16]+s0+W[i-7]+s1)>>>0}
+let[a,bb,cc,d,e,f,g,h]=H;for(let i=0;i<64;i++){const S1=r(e,6)^r(e,11)^r(e,25),ch=(e&f)^(~e&g),t1=(h+S1+ch+K[i]+W[i])>>>0,S0=r(a,2)^r(a,13)^r(a,22),mj=(a&bb)^(a&cc)^(bb&cc),t2=(S0+mj)>>>0;h=g;g=f;f=e;e=(d+t1)>>>0;d=cc;cc=bb;bb=a;a=(t1+t2)>>>0}
+H[0]=(H[0]+a)>>>0;H[1]=(H[1]+bb)>>>0;H[2]=(H[2]+cc)>>>0;H[3]=(H[3]+d)>>>0;H[4]=(H[4]+e)>>>0;H[5]=(H[5]+f)>>>0;H[6]=(H[6]+g)>>>0;H[7]=(H[7]+h)>>>0}
+return H.map(x=>x.toString(16).padStart(8,'0')).join('')}
+const normPw=s=>s.replace(/[‘’‚‛′`´]/g,"'").replace(/[“”]/g,'"').trim();
+const PW_DEFAULT="91e5bc4fa9e5f1ece687fa6daeb0491ecd5885fce973071f2a415be675cbd53d";
+const ACC="7f58d7a23e4bfd11011181903dab97d6e39ab1392cd2f26da53b93d99c74602e";
+const LS={get(k){try{return localStorage.getItem(k)}catch(e){return null}},set(k,v){try{localStorage.setItem(k,v)}catch(e){}}};
+const $=id=>document.getElementById(id);
+
+/* ---------- settings ---------- */
+const OPT={m:[100,200,500],tc:[0,20],th:[60,80,95],v2:[40,50,60]};
+const S={V0:180,d:32.5,mp:35,tau:6,Patm:101.3,m:200,tc:20,th:80,lock:0,p:0,v2:50};
+try{const q=new URLSearchParams(location.search).get('s');if(q){const o=JSON.parse(decodeURIComponent(escape(atob(q))));for(const k in S)if(k in o&&isFinite(+o[k]))S[k]=+o[k];}}catch(e){}
+
+const G=9.81,ROOM=25,H0=20; // reset height (mm)
+const Acm2=()=>Math.PI*Math.pow(S.d/20,2);
+const Am2=()=>Acm2()*1e-4;
+const Plo=()=>S.Patm*1000+(S.mp/1000)*G/Am2();
+const Phi=()=>Plo()+(S.m/1000)*G/Am2();
+
+/* ---------- language ---------- */
+let L=(LS.get('he_lang')==='th')?'th':'en';
+const T={
+ en:{ttl:"Heat Engine",sub:"Air-can engine lifting a mass · P–V cycle",teacher:"Teacher",lang:"ไทย",
+  steps:["A→B  Place mass","B→C  Move can to hot water","C→D  Remove mass","D→A  Move can to cold water"],moving:"Moving…",
+  reset:"⟲ Reset",cold:"COLD",hot:"HOT",pres:"PRESSURE",top:"Piston at top!",
+  credit:"Asst.Prof.Dr. Rossumont Jaryabhand · Rajamangala University of Technology Tawan-ok, Uthenthawai Campus · No Right Reserved",
+  pwT:"Teacher password",pwErr:"Wrong password",tT:"Teacher panel",thH:"Expected values (ideal gas, after full heat exchange)",
+  setH:"Apparatus settings",lV0:"Can + tubing volume V₀ (cm³)",lD:"Piston diameter (mm)",lMp:"Piston + platform mass (g)",lTau:"Heat-exchange time constant (s)",lPa:"Atmospheric pressure (kPa)",
+  lLock:"Lock chips in student link (students cannot change m, T_C, T_H)",apply:"Apply",mkLink:"Copy student link",copied:"Student link copied ✓",
+  nolink:"This preview has no real web address. Upload the file to GitHub Pages first, then copy the link there.",
+  cpH:"Change password",cpE:"Email",cpA:"Account password",cpN:"New teacher password",cpBtn:"Change",cpOk:"Password changed ✓ (this device)",cpBad:"Email or account password incorrect",cpEmpty:"Enter a new password",close:"Close",
+  state:"State",wl:"Useful work  W = mgΔh (B→C)",wn:"Net work of cycle  ∮P dV",qi:"Heat in  Q_in (B→C + C→D, air Cp = 7/2 R)",ef:"Efficiency  W_net / Q_in",ec:"Carnot limit  1 − T_C/T_H",
+  p0:"Part 1 · Air engine",p1:"Part 2 · Carnot engine",sub2:"Carnot cycle · isothermal + adiabatic strokes",tg:"GAS TEMPERATURE",insul:"INSULATOR",rc:"COLD RESERVOIR",rh:"HOT RESERVOIR",running:"Running…",
+  steps2:["1→2  Isothermal expansion","Move to insulator","2→3  Adiabatic expansion","Move to cold reservoir","3→4  Isothermal compression","Move to insulator","4→1  Adiabatic compression","Move to hot reservoir"],
+  c12:"1→2 isothermal: Q_H = W = nRT_H ln(V₂/V₁)",c23:"2→3 adiabatic: W = nR(T_H−T_C)/(γ−1)",c34:"3→4 isothermal: W = −Q_C",c41:"4→1 adiabatic: W",ce:"Efficiency  W_net / Q_H",
+  tnote2:"Ideal reversible cycle: perfectly insulated walls, conducting base, slow strokes. Gas: air, γ = 1.40, nR = 0.0346 J/K. Each stroke stops automatically at the correct corner (adiabatic strokes stop when T reaches the next reservoir). Efficiency equals the Carnot limit — compare with Part 1 using the same T_C, T_H.",
+  tnote:"Each state starts from h_A = 20 mm (press ⟲ Reset). Students' readings approach these values when they wait for the piston to stop moving. Ruler reads the underside of the platform."},
+ th:{ttl:"เครื่องยนต์ความร้อน",sub:"เครื่องยนต์อากาศยกมวล · วัฏจักร P–V",teacher:"ครู",lang:"EN",
+  steps:["A→B  วางมวล","B→C  ย้ายกระป๋องไปน้ำร้อน","C→D  ยกมวลออก","D→A  ย้ายกระป๋องไปน้ำเย็น"],moving:"กำลังย้าย…",
+  reset:"⟲ เริ่มใหม่",cold:"น้ำเย็น",hot:"น้ำร้อน",pres:"ความดัน",top:"ลูกสูบชนด้านบน!",
+  credit:"ผศ.ดร.รสสุมนต์ จารยะพันธุ์ · มหาวิทยาลัยเทคโนโลยีราชมงคลตะวันออก อุเทนถวาย · ไม่สงวนลิขสิทธิ์",
+  pwT:"รหัสผ่านครู",pwErr:"รหัสผ่านไม่ถูกต้อง",tT:"ส่วนของครู",thH:"ค่าที่ควรได้ (แก๊สอุดมคติ เมื่อแลกเปลี่ยนความร้อนเต็มที่)",
+  setH:"ตั้งค่าอุปกรณ์",lV0:"ปริมาตรกระป๋อง + สาย V₀ (cm³)",lD:"เส้นผ่านศูนย์กลางลูกสูบ (mm)",lMp:"มวลลูกสูบ + แท่นวาง (g)",lTau:"ค่าคงตัวเวลาการรับ/คายความร้อน (s)",lPa:"ความดันบรรยากาศ (kPa)",
+  lLock:"ล็อกชิปในลิงก์นักศึกษา (นักศึกษาเปลี่ยน m, T_C, T_H ไม่ได้)",apply:"ใช้ค่านี้",mkLink:"คัดลอกลิงก์นักศึกษา",copied:"คัดลอกลิงก์แล้ว ✓",
+  nolink:"หน้าตัวอย่างนี้ไม่มีที่อยู่เว็บจริง ให้อัปโหลดไฟล์ขึ้น GitHub Pages ก่อน แล้วค่อยคัดลอกลิงก์จากที่นั่น",
+  cpH:"เปลี่ยนรหัสผ่าน",cpE:"อีเมล",cpA:"รหัสผ่านบัญชี",cpN:"รหัสผ่านครูใหม่",cpBtn:"เปลี่ยน",cpOk:"เปลี่ยนรหัสผ่านแล้ว ✓ (เฉพาะเครื่องนี้)",cpBad:"อีเมลหรือรหัสผ่านบัญชีไม่ถูกต้อง",cpEmpty:"กรุณาใส่รหัสผ่านใหม่",close:"ปิด",
+  state:"สถานะ",wl:"งานที่ใช้ได้  W = mgΔh (B→C)",wn:"งานสุทธิของวัฏจักร  ∮P dV",qi:"ความร้อนที่รับ  Q_in (B→C + C→D, อากาศ Cp = 7/2 R)",ef:"ประสิทธิภาพ  W_net / Q_in",ec:"ขีดจำกัดคาร์โนต์  1 − T_C/T_H",
+  p0:"ตอนที่ 1 · เครื่องยนต์อากาศ",p1:"ตอนที่ 2 · เครื่องยนต์คาร์โนต์",sub2:"วัฏจักรคาร์โนต์ · อุณหภูมิคงที่ + แอเดียแบติก",tg:"อุณหภูมิแก๊ส",insul:"ฉนวน",rc:"แหล่งเย็น",rh:"แหล่งร้อน",running:"กำลังทำงาน…",
+  steps2:["1→2  ขยายตัวแบบอุณหภูมิคงที่","ย้ายไปวางบนฉนวน","2→3  ขยายตัวแบบแอเดียแบติก","ย้ายไปแหล่งเย็น","3→4  อัดแบบอุณหภูมิคงที่","ย้ายไปวางบนฉนวน","4→1  อัดแบบแอเดียแบติก","ย้ายไปแหล่งร้อน"],
+  c12:"1→2 อุณหภูมิคงที่: Q_H = W = nRT_H ln(V₂/V₁)",c23:"2→3 แอเดียแบติก: W = nR(T_H−T_C)/(γ−1)",c34:"3→4 อุณหภูมิคงที่: W = −Q_C",c41:"4→1 แอเดียแบติก: W",ce:"ประสิทธิภาพ  W_net / Q_H",
+  tnote2:"วัฏจักรอุดมคติแบบผันกลับได้: ผนังเป็นฉนวนสมบูรณ์ ฐานนำความร้อน ลูกสูบเลื่อนช้า แก๊สคืออากาศ γ = 1.40, nR = 0.0346 J/K ลูกสูบหยุดเองที่มุมของวัฏจักร (ช่วงแอเดียแบติกหยุดเมื่อ T เท่ากับแหล่งความร้อนถัดไป) ประสิทธิภาพเท่าขีดจำกัดคาร์โนต์ — เทียบกับตอนที่ 1 ที่ T_C, T_H เดียวกัน",
+  tnote:"ทุกรอบเริ่มที่ h_A = 20 mm (กด ⟲ เริ่มใหม่) ค่าที่นักศึกษาอ่านได้จะเข้าใกล้ค่าเหล่านี้เมื่อรอจนลูกสูบหยุดนิ่ง ไม้บรรทัดอ่านที่ขอบล่างของแท่นวาง"}
+};
+const t=k=>T[L][k];
+
+/* ---------- simulation ---------- */
+const X_COLD=140,X_HOT=400,LOW=578,HIGH=318,CAN_W=96,CAN_H=120;
+const sim={canX:X_COLD,canB:LOW,pos:'cold',anim:null,massOn:false,Tg:0,nR:0,h:H0,hD:H0,step:0,pShow:0,pT:0};
+function resetSim(){
+  sim.canX=X_COLD;sim.canB=LOW;sim.pos='cold';sim.anim=null;sim.massOn=false;sim.step=0;
+  sim.Tg=S.tc+273.15;
+  const VA=(S.V0+Acm2()*H0/10)*1e-6;
+  sim.nR=Plo()*VA/sim.Tg;sim.h=H0;sim.hD=H0;sim.pShow=Plo()/1000;
+  updAct();
+}
+function inBath(){return sim.canB>LOW-8 && !sim.anim}
+function startMove(to){
+  sim.anim={from:sim.canX,to:to==='hot'?X_HOT:X_COLD,t:0,dest:to};
+}
+function update(dt){
+  if(sim.anim){
+    const a=sim.anim;a.t+=dt;const R=0.7,M=1.1,tot=R+M+R;
+    if(a.t<R){sim.canB=LOW+(HIGH-LOW)*ease(a.t/R)}
+    else if(a.t<R+M){sim.canB=HIGH;sim.canX=a.from+(a.to-a.from)*ease((a.t-R)/M)}
+    else if(a.t<tot){sim.canX=a.to;sim.canB=HIGH+(LOW-HIGH)*ease((a.t-R-M)/R)}
+    else{sim.canX=a.to;sim.canB=LOW;sim.pos=a.dest;sim.anim=null;updAct()}
+  }
+  let Tt,tau;
+  if(inBath()){Tt=(sim.pos==='hot'?S.th:S.tc)+273.15;tau=Math.max(.3,S.tau)}
+  else{Tt=ROOM+273.15;tau=Math.max(.3,S.tau)*12}
+  sim.Tg+=(Tt-sim.Tg)*(1-Math.exp(-dt/tau));
+  const P=sim.massOn?Phi():Plo();
+  const V=sim.nR*sim.Tg/P*1e6;
+  sim.h=Math.max(0,Math.min(125,(V-S.V0)/Acm2()*10));
+  sim.hD+=(sim.h-sim.hD)*(1-Math.exp(-dt/0.25));
+  sim.pT+=dt;if(sim.pT>0.25){sim.pT=0;sim.pShow=P/1000+(Math.random()-.5)*0.06}
+}
+const ease=x=>x<.5?2*x*x:1-Math.pow(-2*x+2,2)/2;
+
+function doAct(){
+  if(sim.anim)return;
+  switch(sim.step){
+    case 0:sim.massOn=true;break;
+    case 1:startMove('hot');break;
+    case 2:sim.massOn=false;break;
+    case 3:startMove('cold');break;
+  }
+  sim.step=(sim.step+1)%4;updAct();
+}
+function updAct(){
+  const b=$('act');
+  if(S.p===1){if(car.anim){b.textContent=t('moving');b.disabled=true}else if(car.stroke){b.textContent=t('running');b.disabled=true}else{b.textContent=t('steps2')[car.step];b.disabled=false}return}
+  if(sim.anim){b.textContent=t('moving');b.disabled=true}
+  else{b.textContent=t('steps')[sim.step];b.disabled=false}
+}
+
+/* ---------- theory (teacher) ---------- */
+function theory(){
+  const A=Acm2(),Tc=S.tc+273.15,Th=S.th+273.15,pl=Plo(),ph=Phi();
+  const VA=(S.V0+A*H0/10)*1e-6,nR=pl*VA/Tc;
+  const VB=nR*Tc/ph,VC=nR*Th/ph,VD=nR*Th/pl;
+  const h=V=>(V*1e6-S.V0)/A*10;
+  const Wl=(S.m/1000)*G*(h(VC)-h(VB))/1000;
+  const Wn=nR*Tc*Math.log(VB/VA)+ph*(VC-VB)+nR*Th*Math.log(VD/VC)+pl*(VA-VD);
+  const Qin=3.5*nR*(Th-Tc)+nR*Th*Math.log(VD/VC);
+  return {st:[["A",pl,VA,h(VA)],["B",ph,VB,h(VB)],["C",ph,VC,h(VC)],["D",pl,VD,h(VD)]],Wl,Wn,Qin,e:Wn/Qin,ec:1-Tc/Th};
+}
+function renderTheory(){
+  if(S.p===1)return renderTheory2();
+  const r=theory();
+  let s=`<table class="mono"><tr><th>${t('state')}</th><th>P (kPa)</th><th>V (cm³)</th><th>h (mm)</th></tr>`;
+  r.st.forEach(x=>{s+=`<tr><td>${x[0]}</td><td>${(x[1]/1000).toFixed(2)}</td><td>${(x[2]*1e6).toFixed(1)}</td><td>${x[3].toFixed(1)}</td></tr>`});
+  s+=`</table><table class="mono" style="margin-top:8px">
+  <tr><td>${t('wl')}</td><td>${(r.Wl*1000).toFixed(2)} mJ</td></tr>
+  <tr><td>${t('wn')}</td><td>${(r.Wn*1000).toFixed(2)} mJ</td></tr>
+  <tr><td>${t('qi')}</td><td>${r.Qin.toFixed(2)} J</td></tr>
+  <tr><td>${t('ef')}</td><td>${(r.e*100).toFixed(3)} %</td></tr>
+  <tr><td>${t('ec')}</td><td>${(r.ec*100).toFixed(1)} %</td></tr></table>
+  <div class="note">${t('tnote')}<br>m = ${S.m} g · T_C = ${S.tc} °C · T_H = ${S.th} °C · A = ${Acm2().toFixed(3)} cm²</div>`;
+  $('theory').innerHTML=s;
+}
+
+/* ---------- chips ---------- */
+function buildChips(){
+  const c=$('chips');c.innerHTML='';
+  const grp=(lab,key,unit)=>{
+    const g=document.createElement('span');g.className='gl mono';g.textContent=lab;c.appendChild(g);
+    OPT[key].forEach(v=>{const b=document.createElement('button');b.className='chip mono'+(S[key]===v?' on':'');b.textContent=v+' '+unit;
+      b.disabled=!!S.lock;b.onclick=()=>{S[key]=v;buildChips();resetSim();resetCar()};c.appendChild(b)});
+  };
+  if(S.p===1){grp('V₂','v2','cm³');}else grp('m','m','g');
+  grp('T_C','tc','°C');grp('T_H','th','°C');
+  const r=document.createElement('button');r.className='chip rs';r.textContent=t('reset');r.style.marginLeft='8px';r.onclick=()=>{resetSim();resetCar()};c.appendChild(r);
+}
+
+/* ---------- drawing ---------- */
+const cv=$('cv'),ctx=cv.getContext('2d');
+let sc=1,ox=0,oy=0,DPR=1;
+function resize(){
+  const r=$('stage').getBoundingClientRect();DPR=window.devicePixelRatio||1;
+  cv.width=r.width*DPR;cv.height=r.height*DPR;
+  sc=Math.min(r.width/1000,r.height/620);ox=(r.width-1000*sc)/2;oy=(r.height-620*sc)/2;
+}
+const FG='#EDE8DC',MUT='#8C99A8',GR='#7FD4A8',AM='#E8B23A',MONO='ui-monospace,"SF Mono",Menlo,Consolas,monospace';
+const pistonY=h=>548-h*1.8, platY=h=>290-h*1.8;
+let clockT=0;
+function draw(){
+  ctx.setTransform(DPR,0,0,DPR,0,0);ctx.clearRect(0,0,cv.width,cv.height);
+  ctx.setTransform(DPR*sc,0,0,DPR*sc,DPR*ox,DPR*oy);
+  // table
+  ctx.strokeStyle='rgba(237,232,220,.35)';ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(20,591);ctx.lineTo(980,591);ctx.stroke();
+  drawHose();
+  drawBeaker(30,'cold');drawBeaker(290,'hot');
+  drawCan();
+  drawWaterFront(30,'cold');drawWaterFront(290,'hot');
+  drawSensor();
+  ctx.save();ctx.translate(200,0);
+  drawCylinder();
+  drawRuler(ctx);
+  drawPlatform(ctx,true);
+  if(!sim.massOn)drawMassStack(670,590);
+  drawLoupe();
+  ctx.restore();
+  // labels
+  ctx.fillStyle=MUT;ctx.font=`13px ${MONO}`;ctx.textAlign='left';
+  ctx.fillText('V₀ = '+S.V0+' cm³',sim.canX-48,sim.canB-CAN_H-8);
+  ctx.textAlign='center';ctx.fillText('Ø '+S.d+' mm',700,608);
+  if(sim.h>=124.9){ctx.fillStyle='#ff8f8f';ctx.font=`bold 15px ${MONO}`;ctx.fillText(t('top'),700,20)}
+}
+function drawBeaker(x,kind){
+  const w=220,top=340,bot=590,wl=400;
+  ctx.fillStyle=kind==='cold'?'rgba(90,160,230,.30)':'rgba(232,140,70,.30)';
+  ctx.fillRect(x+3,wl,w-6,bot-wl-2);
+  // ice
+  if(kind==='cold'&&S.tc<=0){ctx.fillStyle='rgba(230,245,255,.35)';[[25,404,24],[80,402,20],[160,405,26],[195,403,16]].forEach(c=>{ctx.save();ctx.translate(x+c[0],c[1]);ctx.rotate(.2*c[0]%1);ctx.fillRect(-c[2]/2,-c[2]/2,c[2],c[2]*.8);ctx.restore()})}
+  // steam
+  if(kind==='hot'){ctx.strokeStyle='rgba(237,232,220,'+(0.06+(S.th-50)/450)+')';ctx.lineWidth=3;const tt=performance.now()/1000;
+    for(let i=0;i<4;i++){ctx.beginPath();const sx=x+30+i*55;for(let k=0;k<=16;k++){const yy=396-k*3;const xx=sx+Math.sin(tt*1.5+k*.35+i)*5;k?ctx.lineTo(xx,yy):ctx.moveTo(xx,yy)}ctx.stroke()}
+    ctx.fillStyle='rgba(232,110,60,.55)';ctx.fillRect(x-6,588,w+12,5)}
+  // walls
+  ctx.strokeStyle='rgba(237,232,220,.55)';ctx.lineWidth=3;ctx.beginPath();ctx.moveTo(x,top);ctx.lineTo(x,bot);ctx.lineTo(x+w,bot);ctx.lineTo(x+w,top);ctx.stroke();
+  // thermometer probe + display
+  ctx.strokeStyle='rgba(237,232,220,.6)';ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(x+w-14,386);ctx.lineTo(x+w-14,540);ctx.stroke();
+  ctx.fillStyle='#0B1A2B';ctx.strokeStyle=kind==='cold'?'#6FB3F0':AM;ctx.lineWidth=1.5;rr(x+w-104,348,96,36,6);ctx.fill();ctx.stroke();
+  ctx.fillStyle=FG;ctx.font=`bold 17px ${MONO}`;ctx.textAlign='center';
+  const T0=kind==='cold'?S.tc:S.th;ctx.fillText(T0.toFixed(1)+' °C',x+w-56,372);
+  ctx.fillStyle=MUT;ctx.font='12px sans-serif';ctx.textAlign='center';ctx.fillText(t(kind),x+w/2,610);
+}
+function drawWaterFront(x,kind){ // water surface line over can
+  ctx.strokeStyle=kind==='cold'?'rgba(140,200,255,.6)':'rgba(255,180,120,.6)';ctx.lineWidth=1.5;ctx.beginPath();ctx.moveTo(x+3,400);ctx.lineTo(x+217,400);ctx.stroke();
+}
+function drawCan(){
+  const x=sim.canX-CAN_W/2,y=sim.canB-CAN_H;
+  const Tn=Math.max(0,Math.min(1,(sim.Tg-273.15)/100));
+  const g=ctx.createLinearGradient(x,0,x+CAN_W,0);g.addColorStop(0,'#5d6873');g.addColorStop(.45,'#c9d0d6');g.addColorStop(1,'#59636e');
+  ctx.fillStyle=g;ctx.fillRect(x,y,CAN_W,CAN_H);
+  ctx.fillStyle='rgba(0,0,0,.25)';ctx.beginPath();ctx.ellipse(sim.canX,y,CAN_W/2,7,0,0,Math.PI*2);ctx.fill();
+  ctx.strokeStyle='rgba(255,255,255,.35)';ctx.lineWidth=1;ctx.strokeRect(x,y,CAN_W,CAN_H);
+  // stopper
+  ctx.fillStyle='#3a3a3a';ctx.fillRect(sim.canX-12,y-10,24,12);
+  // clamp rod when lifted
+  if(sim.anim){ctx.strokeStyle='rgba(237,232,220,.25)';ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(sim.canX+CAN_W/2,y+20);ctx.lineTo(sim.canX+CAN_W/2+20,y+20);ctx.stroke()}
+}
+function drawHose(){
+  const sx=sim.canX,sy=sim.canB-CAN_H-10;
+  ctx.strokeStyle='#2c3e50';ctx.lineWidth=9;ctx.lineCap='round';
+  ctx.beginPath();ctx.moveTo(sx,sy);ctx.bezierCurveTo(sx,sy-150,560,500,642,572);ctx.stroke();
+  ctx.strokeStyle='rgba(237,232,220,.35)';ctx.lineWidth=1.5;ctx.stroke();ctx.lineCap='butt';
+}
+function drawCylinder(){
+  const yp=pistonY(sim.hD);
+  // gas tint
+  const Tn=Math.max(0,Math.min(1,(sim.Tg-273.15)/100));
+  ctx.fillStyle=`rgba(${Math.round(110+140*Tn)},${Math.round(170-30*Tn)},${Math.round(230-150*Tn)},.16)`;
+  ctx.fillRect(472,yp,56,556-yp);
+  // glass
+  ctx.fillStyle='rgba(180,220,255,.05)';ctx.fillRect(470,300,60,256);
+  ctx.strokeStyle='rgba(200,230,255,.6)';ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(470,300);ctx.lineTo(470,556);ctx.moveTo(530,300);ctx.lineTo(530,556);ctx.stroke();
+  ctx.fillStyle='rgba(255,255,255,.12)';ctx.fillRect(476,304,4,248);
+  // top cap
+  ctx.fillStyle='#4a5866';ctx.fillRect(466,296,68,6);
+  // rod
+  ctx.fillStyle='#b8c0c8';ctx.fillRect(497,platY(sim.hD),6,yp-10-platY(sim.hD));
+  // piston
+  ctx.fillStyle='#2b2f36';ctx.fillRect(472,yp-10,56,10);ctx.fillStyle='#555d66';ctx.fillRect(472,yp-10,56,3);
+  // base
+  ctx.fillStyle='#34414e';ctx.fillRect(440,556,120,34);ctx.strokeStyle='rgba(237,232,220,.25)';ctx.lineWidth=1;ctx.strokeRect(440,556,120,34);
+  // stand rod for ruler
+  ctx.fillStyle='#34414e';ctx.fillRect(592,60,6,530);
+}
+function drawPlatform(c,withMass){
+  const y=platY(sim.hD);
+  c.fillStyle='#9aa4ae';c.fillRect(455,y-8,90,8);c.fillStyle='#d6dce1';c.fillRect(455,y-8,90,2);
+  // index line to ruler
+  c.strokeStyle=GR;c.lineWidth=1;c.beginPath();c.moveTo(545,y);c.lineTo(566,y);c.stroke();
+  if(withMass&&sim.massOn)drawMassStack(500,y-8,c);
+}
+function drawMassStack(cx,base,c){
+  c=c||ctx;const n=S.m===500?5:S.m===200?2:1;
+  for(let i=0;i<n;i++){const y=base-(i+1)*10;
+    const g=c.createLinearGradient(cx-35,0,cx+35,0);g.addColorStop(0,'#6b7580');g.addColorStop(.5,'#cfd5da');g.addColorStop(1,'#646e78');
+    c.fillStyle=g;c.fillRect(cx-35,y,70,9);c.fillStyle='rgba(0,0,0,.35)';c.fillRect(cx-35,y+9,70,1)}
+  c.fillStyle=FG;c.font=`12px ${MONO}`;c.textAlign='center';c.fillText(S.m+' g',cx,base-n*10-5);
+}
+function drawRuler(c){
+  const x=566,w=26,y0=platY(0),y1=platY(125);
+  c.fillStyle='#E9E2CC';c.fillRect(x,y1-4,w,y0-y1+10);
+  c.strokeStyle='#1d2630';c.fillStyle='#1d2630';c.lineWidth=.5;
+  for(let mm=0;mm<=125;mm++){const y=platY(mm);const len=mm%10===0?14:mm%5===0?10:6;c.beginPath();c.moveTo(x,y);c.lineTo(x+len,y);c.stroke()}
+  c.font=`6px ${MONO}`;c.textAlign='right';
+  for(let mm=0;mm<=120;mm+=10){c.fillText(String(mm),x+w-1,platY(mm)+2)}
+  c.font=`5px ${MONO}`;c.fillText('mm',x+w-1,y1+1);
+}
+function drawSensor(){
+  const x=516,y=226,w=122,h=58;
+  ctx.strokeStyle='rgba(237,232,220,.35)';ctx.lineWidth=1.5;ctx.beginPath();ctx.moveTo(x+w/2,y+h);ctx.lineTo(x+w/2,540);ctx.lineTo(646,562);ctx.stroke();
+  ctx.fillStyle='#0B1A2B';ctx.strokeStyle=AM;ctx.lineWidth=1.5;rr(x,y,w,h,8);ctx.fill();ctx.stroke();
+  ctx.fillStyle=MUT;ctx.font='11px sans-serif';ctx.textAlign='left';ctx.fillText(t('pres'),x+8,y+15);
+  ctx.fillStyle=AM;ctx.font=`bold 22px ${MONO}`;ctx.textAlign='right';ctx.fillText(sim.pShow.toFixed(2),x+w-38,y+46);
+  ctx.fillStyle=FG;ctx.font=`12px ${MONO}`;ctx.textAlign='left';ctx.fillText('kPa',x+w-34,y+46);
+}
+function drawLoupe(){
+  const cx=690,cy=165,R=72,Z=3.5,ty=platY(sim.hD);
+  ctx.strokeStyle='rgba(127,212,168,.35)';ctx.lineWidth=1;ctx.setLineDash([3,3]);ctx.beginPath();ctx.moveTo(592,ty);ctx.lineTo(cx-R,cy);ctx.stroke();ctx.setLineDash([]);
+  ctx.save();ctx.beginPath();ctx.arc(cx,cy,R,0,Math.PI*2);ctx.clip();
+  ctx.fillStyle='#0d2033';ctx.fillRect(cx-R,cy-R,2*R,2*R);
+  ctx.translate(cx,cy);ctx.scale(Z,Z);ctx.translate(-574,-ty);
+  drawRuler(ctx);drawPlatform(ctx,false);
+  ctx.restore();
+  ctx.strokeStyle=GR;ctx.lineWidth=2;ctx.beginPath();ctx.arc(cx,cy,R,0,Math.PI*2);ctx.stroke();
+  ctx.fillStyle=MUT;ctx.font=`11px ${MONO}`;ctx.textAlign='center';ctx.fillText('×3.5',cx+R-8,cy+R+4);
+}
+function rr(x,y,w,h,r){ctx.beginPath();ctx.moveTo(x+r,y);ctx.arcTo(x+w,y,x+w,y+h,r);ctx.arcTo(x+w,y+h,x,y+h,r);ctx.arcTo(x,y+h,x,y,r);ctx.arcTo(x,y,x+w,y,r);ctx.closePath()}
+
+/* ================= PART 2 : CARNOT ENGINE ================= */
+const CAR={V1:30,nR:0.0346,g:1.40,A:Math.PI*2*2,PX:2.2,BASE:520,X:[170,500,830],VMAX:140};
+const car={x:830,lift:0,st:2,V:30,T:353.15,step:0,anim:null,stroke:null,pT:0,pShow:0,tShow:0};
+function carStates(){
+  const Th=S.th+273.15,Tc=S.tc+273.15,k=Math.pow(Th/Tc,1/(CAR.g-1));
+  return {Th,Tc,V1:CAR.V1,V2:S.v2,V3:S.v2*k,V4:CAR.V1*k};
+}
+function resetCar(){
+  const s=carStates();
+  car.x=CAR.X[2];car.lift=0;car.st=2;car.V=s.V1;car.T=s.Th;car.step=0;car.anim=null;car.stroke=null;
+  car.pShow=CAR.nR*car.T/(car.V*1e-6)/1000;car.tShow=car.T-273.15;
+  if(S.p===1)updAct();
+}
+function carAct(){
+  if(car.anim||car.stroke)return;
+  const s=carStates();
+  switch(car.step){
+    case 0:car.stroke={a:s.V1,b:s.V2,t:0,iso:true,T0:s.Th};break;
+    case 1:car.anim={from:car.x,to:CAR.X[1],t:0,st:1};break;
+    case 2:car.stroke={a:s.V2,b:s.V3,t:0,iso:false,T0:s.Th};break;
+    case 3:car.anim={from:car.x,to:CAR.X[0],t:0,st:0};break;
+    case 4:car.stroke={a:s.V3,b:s.V4,t:0,iso:true,T0:s.Tc};break;
+    case 5:car.anim={from:car.x,to:CAR.X[1],t:0,st:1};break;
+    case 6:car.stroke={a:s.V4,b:s.V1,t:0,iso:false,T0:s.Tc};break;
+    case 7:car.anim={from:car.x,to:CAR.X[2],t:0,st:2};break;
+  }
+  car.step=(car.step+1)%8;updAct();
+}
+function updCar(dt){
+  if(car.anim){const a=car.anim;a.t+=dt;const R=.6,M=1.1,L=70;
+    if(a.t<R)car.lift=L*ease(a.t/R);
+    else if(a.t<R+M){car.lift=L;car.x=a.from+(a.to-a.from)*ease((a.t-R)/M)}
+    else if(a.t<2*R+M){car.x=a.to;car.lift=L*(1-ease((a.t-R-M)/R))}
+    else{car.x=a.to;car.lift=0;car.st=a.st;car.anim=null;updAct()}}
+  if(car.stroke){const s=car.stroke,D=5;s.t+=dt;const f=Math.min(1,s.t/D);
+    car.V=s.a*Math.pow(s.b/s.a,f);car.T=s.iso?s.T0:s.T0*Math.pow(s.a/car.V,CAR.g-1);
+    if(f>=1){car.V=s.b;car.stroke=null;updAct()}}
+  car.pT+=dt;if(car.pT>0.25){car.pT=0;car.pShow=CAR.nR*car.T/(car.V*1e-6)/1000+(Math.random()-.5)*0.06;car.tShow=car.T-273.15+(Math.random()-.5)*0.08}
+}
+const cyV=v=>CAR.BASE-8-car.lift-(v/CAR.A)*10*CAR.PX;
+function drawCar(){
+  ctx.setTransform(DPR,0,0,DPR,0,0);ctx.clearRect(0,0,cv.width,cv.height);
+  ctx.setTransform(DPR*sc,0,0,DPR*sc,DPR*ox,DPR*oy);
+  ctx.strokeStyle='rgba(237,232,220,.35)';ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(20,591);ctx.lineTo(980,591);ctx.stroke();
+  carBlock(0);carBlock(1);carBlock(2);
+  drawCarCyl(ctx);
+  carSensor(40,36,t('pres'),car.pShow.toFixed(2),'kPa',AM);
+  carSensor(236,36,t('tg'),car.tShow.toFixed(1),'°C','#6FB3F0');
+  carLoupe();
+}
+function carBlock(i){
+  const x=CAR.X[i]-100,y=CAR.BASE,w=200,h=70;
+  if(i===1){ctx.fillStyle='rgba(225,215,190,.16)';ctx.fillRect(x,y,w,h);ctx.save();ctx.beginPath();ctx.rect(x,y,w,h);ctx.clip();
+    ctx.strokeStyle='rgba(225,215,190,.22)';ctx.lineWidth=1;for(let k=-80;k<w;k+=12){ctx.beginPath();ctx.moveTo(x+k,y+h);ctx.lineTo(x+k+h,y);ctx.stroke()}ctx.restore();
+    ctx.strokeStyle='rgba(225,215,190,.5)';ctx.lineWidth=1.5;ctx.strokeRect(x,y,w,h)}
+  else{const hot=i===2;const g=ctx.createLinearGradient(0,y,0,y+h);
+    g.addColorStop(0,hot?'rgba(240,120,60,.75)':'rgba(110,175,240,.7)');g.addColorStop(1,hot?'rgba(150,50,30,.75)':'rgba(40,80,140,.75)');
+    ctx.fillStyle=g;ctx.fillRect(x,y,w,h);ctx.strokeStyle='rgba(237,232,220,.35)';ctx.lineWidth=1;ctx.strokeRect(x,y,w,h);
+    ctx.fillStyle=FG;ctx.font=`bold 17px ${MONO}`;ctx.textAlign='center';
+    ctx.fillText((hot?S.th:S.tc).toFixed(1)+' °C',CAR.X[i],y+42)}
+  ctx.fillStyle=MUT;ctx.font='12px sans-serif';ctx.textAlign='center';ctx.fillText(t(['rc','insul','rh'][i]),CAR.X[i],610);
+}
+function drawCarCyl(c,noScale){
+  const cx=car.x,base=CAR.BASE-car.lift,yb=base-8,top=cyV(CAR.VMAX)-6,yf=cyV(car.V),W=88;
+  const Tn=Math.max(0,Math.min(1,(car.T-273.15)/100));
+  c.fillStyle=`rgba(${Math.round(110+140*Tn)},${Math.round(170-40*Tn)},${Math.round(230-160*Tn)},.25)`;c.fillRect(cx-W/2,yf,W,yb-yf);
+  // insulated walls
+  c.fillStyle='rgba(225,215,190,.22)';c.fillRect(cx-W/2-9,top,9,base-top);c.fillRect(cx+W/2,top,9,base-top);
+  c.strokeStyle='rgba(225,215,190,.6)';c.lineWidth=1;c.strokeRect(cx-W/2-9,top,9,base-top);c.strokeRect(cx+W/2,top,9,base-top);
+  // conducting base
+  c.fillStyle='#b87333';c.fillRect(cx-W/2-9,yb,W+18,8);
+  // piston + rod + handle
+  c.fillStyle='#2b2f36';c.fillRect(cx-W/2,yf-14,W,14);c.fillStyle='#555d66';c.fillRect(cx-W/2,yf-14,W,3);
+  c.fillStyle='#b8c0c8';c.fillRect(cx-4,yf-74,8,60);c.fillStyle='#5b6672';c.fillRect(cx-36,yf-84,72,12);
+  if(!noScale)carScale(c);
+  carIndex(c);
+}
+function carScale(c){
+  const x=car.x+44+13,w=28;
+  c.fillStyle='rgba(233,226,204,.92)';c.fillRect(x,cyV(CAR.VMAX)-12,w,cyV(0)-cyV(CAR.VMAX)+14);
+  c.strokeStyle='#1d2630';c.fillStyle='#1d2630';c.lineWidth=.4;
+  for(let v=0;v<=CAR.VMAX;v++){const y=cyV(v),len=v%10===0?13:v%5===0?9:5;c.beginPath();c.moveTo(x,y);c.lineTo(x+len,y);c.stroke()}
+  c.font=`6px ${MONO}`;c.textAlign='right';for(let v=0;v<=CAR.VMAX;v+=10)c.fillText(String(v),x+w-1,cyV(v)+2);
+  c.font=`5px ${MONO}`;c.fillText('cm³',x+w-1,cyV(CAR.VMAX)-6);
+}
+function carIndex(c){const y=cyV(car.V);c.strokeStyle=GR;c.lineWidth=1;c.beginPath();c.moveTo(car.x+44,y);c.lineTo(car.x+44+24,y);c.stroke()}
+function carSensor(x,y,lab,val,unit,col){
+  const w=176,h=62;
+  ctx.fillStyle='#0B1A2B';ctx.strokeStyle=col;ctx.lineWidth=1.5;rr(x,y,w,h,8);ctx.fill();ctx.stroke();
+  ctx.fillStyle=MUT;ctx.font='11px sans-serif';ctx.textAlign='left';ctx.fillText(lab,x+8,y+15);
+  ctx.fillStyle=col;ctx.font=`bold 22px ${MONO}`;ctx.textAlign='right';ctx.fillText(val,x+w-40,y+48);
+  ctx.fillStyle=FG;ctx.font=`12px ${MONO}`;ctx.textAlign='left';ctx.fillText(unit,x+w-36,y+48);
+}
+function carLoupe(){
+  const cx=870,cy=110,R=84,Z=4,ty=cyV(car.V),sx=car.x+44+13+8;
+  ctx.strokeStyle='rgba(127,212,168,.35)';ctx.lineWidth=1;ctx.setLineDash([3,3]);ctx.beginPath();ctx.moveTo(sx+20,ty);ctx.lineTo(cx-R*.7,cy+R*.7);ctx.stroke();ctx.setLineDash([]);
+  ctx.save();ctx.beginPath();ctx.arc(cx,cy,R,0,Math.PI*2);ctx.clip();
+  ctx.fillStyle='#0d2033';ctx.fillRect(cx-R,cy-R,2*R,2*R);
+  ctx.translate(cx,cy);ctx.scale(Z,Z);ctx.translate(-sx,-ty);
+  drawCarCyl(ctx,true);carScale(ctx);carIndex(ctx);
+  ctx.restore();
+  ctx.strokeStyle=GR;ctx.lineWidth=2;ctx.beginPath();ctx.arc(cx,cy,R,0,Math.PI*2);ctx.stroke();
+  ctx.fillStyle=MUT;ctx.font=`11px ${MONO}`;ctx.textAlign='center';ctx.fillText('×4',cx+R-6,cy+R+6);
+}
+function renderTheory2(){
+  const s=carStates(),nR=CAR.nR,g=CAR.g,P=(V,T)=>nR*T/(V*1e-6)/1000;
+  const Q12=nR*s.Th*Math.log(s.V2/s.V1),W23=nR*(s.Th-s.Tc)/(g-1),Q34=nR*s.Tc*Math.log(s.V3/s.V4);
+  const Wn=Q12-Q34;
+  let h=`<table class="mono"><tr><th>${t('state')}</th><th>P (kPa)</th><th>V (cm³)</th><th>T (°C)</th></tr>`;
+  [[1,s.V1,s.Th],[2,s.V2,s.Th],[3,s.V3,s.Tc],[4,s.V4,s.Tc]].forEach(r=>{h+=`<tr><td>${r[0]}</td><td>${P(r[1],r[2]).toFixed(2)}</td><td>${r[1].toFixed(2)}</td><td>${(r[2]-273.15).toFixed(1)}</td></tr>`});
+  h+=`</table><table class="mono" style="margin-top:8px">
+  <tr><td>${t('c12')}</td><td>${(Q12).toFixed(3)} J</td></tr>
+  <tr><td>${t('c23')}</td><td>${(W23).toFixed(3)} J</td></tr>
+  <tr><td>${t('c34')}</td><td>${(-Q34).toFixed(3)} J</td></tr>
+  <tr><td>${t('c41')}</td><td>${(-W23).toFixed(3)} J</td></tr>
+  <tr><td>${t('wn')}</td><td>${(Wn).toFixed(3)} J</td></tr>
+  <tr><td>${t('ce')}</td><td>${(Wn/Q12*100).toFixed(1)} %</td></tr>
+  <tr><td>${t('ec')}</td><td>${((1-s.Tc/s.Th)*100).toFixed(1)} %</td></tr></table>
+  <div class="note">${t('tnote2')}<br>V₂ = ${S.v2} cm³ · T_C = ${S.tc} °C · T_H = ${S.th} °C</div>`;
+  $('theory').innerHTML=h;
+}
+function setPart(p){
+  S.p=p;$('p0').classList.toggle('on',p===0);$('p1').classList.toggle('on',p===1);
+  $('subt').textContent=t(p?'sub2':'sub');buildChips();updAct();
+  if($('ovT').classList.contains('show'))renderTheory();
+}
+$('p0').onclick=()=>setPart(0);$('p1').onclick=()=>setPart(1);
+
+/* ---------- stopwatch ---------- */
+let run=false,t0=0,acc=0;
+function fmt(ms){const s=ms/1000,m=Math.floor(s/60),ss=s-m*60;return String(m).padStart(2,'0')+':'+ss.toFixed(2).padStart(5,'0')}
+$('play').onclick=()=>{if(run){acc+=performance.now()-t0;run=false;$('play').textContent='▶'}else{t0=performance.now();run=true;$('play').textContent='❚❚'}};
+$('rst').onclick=()=>{run=false;acc=0;$('play').textContent='▶';$('clock').textContent=fmt(0)};
+
+/* ---------- loop ---------- */
+let last=performance.now();
+function loop(now){const dt=Math.min(.05,(now-last)/1000);last=now;if(S.p===1){updCar(dt);drawCar()}else{update(dt);draw()}
+  if(run)$('clock').textContent=fmt(acc+now-t0);requestAnimationFrame(loop)}
+
+/* ---------- language apply ---------- */
+function applyLang(){
+  document.documentElement.lang=L;
+  ['ttl','pwT','tT','thH','setH','lV0','lD','lMp','lTau','lPa','lLock','apply','mkLink','cpH','cpBtn'].forEach(k=>{if($(k))$(k).textContent=t(k)});
+  $('subt').textContent=t(S.p?'sub2':'sub');$('p0').textContent=t('p0');$('p1').textContent=t('p1');$('tBtn').textContent=t('teacher');$('langBtn').textContent=t('lang');
+  $('cpE').placeholder=t('cpE');$('cpA').placeholder=t('cpA');$('cpN').placeholder=t('cpN');
+  document.querySelectorAll('#ovT [data-close]').forEach(b=>b.textContent=t('close'));
+  $('credit').textContent=t('credit');document.title=t('ttl');
+  buildChips();updAct();if($('ovT').classList.contains('show'))renderTheory();
+}
+$('langBtn').onclick=()=>{L=L==='en'?'th':'en';LS.set('he_lang',L);applyLang()};
+
+/* ---------- teacher ---------- */
+document.querySelectorAll('[data-close]').forEach(b=>b.onclick=()=>b.closest('.ov').classList.remove('show'));
+$('tBtn').onclick=()=>{$('pwIn').value='';$('pwErr').textContent='';$('ovPw').classList.add('show');setTimeout(()=>$('pwIn').focus(),50)};
+function checkPw(){
+  const hsh=sha256('he|'+normPw($('pwIn').value));
+  if(hsh===(LS.get('he_pw')||PW_DEFAULT)){$('ovPw').classList.remove('show');openT()}else $('pwErr').textContent=t('pwErr');
+}
+$('pwOk').onclick=checkPw;$('pwIn').onkeydown=e=>{if(e.key==='Enter')checkPw()};
+function openT(){
+  $('iV0').value=S.V0;$('iD').value=S.d;$('iMp').value=S.mp;$('iTau').value=S.tau;$('iPa').value=S.Patm;$('iLock').checked=!!S.lock;
+  $('linkMsg').textContent='';$('linkOut').style.display='none';$('cpMsg').textContent='';
+  renderTheory();$('ovT').classList.add('show');
+}
+function readInputs(){
+  const v=(id,mn,mx,def)=>{const x=parseFloat($(id).value);return isFinite(x)?Math.min(mx,Math.max(mn,x)):def};
+  S.V0=v('iV0',50,1000,180);S.d=v('iD',10,60,32.5);S.mp=v('iMp',0,500,35);S.tau=v('iTau',.5,120,6);S.Patm=v('iPa',80,110,101.3);S.lock=$('iLock').checked?1:0;
+}
+$('apply').onclick=()=>{readInputs();buildChips();resetSim();resetCar();renderTheory()};
+$('mkLink').onclick=()=>{
+  readInputs();buildChips();resetSim();resetCar();renderTheory();
+  const msg=$('linkMsg');msg.className='err';
+  if(location.origin==='null'||!/^https?:/.test(location.protocol)){msg.textContent=t('nolink');return}
+  const tok=btoa(unescape(encodeURIComponent(JSON.stringify(S))));
+  const url=location.origin+location.pathname+'?s='+encodeURIComponent(tok);
+  const out=$('linkOut');out.value=url;out.style.display='block';
+  const done=()=>{msg.className='err ok';msg.textContent=t('copied')};
+  if(navigator.clipboard&&navigator.clipboard.writeText){navigator.clipboard.writeText(url).then(done,()=>{out.select();try{document.execCommand('copy');done()}catch(e){}})}
+  else{out.select();try{document.execCommand('copy');done()}catch(e){}}
+};
+$('cpBtn').onclick=()=>{
+  const m=$('cpMsg');m.className='err';
+  const ok=sha256('he|'+$('cpE').value.trim().toLowerCase()+'|'+$('cpA').value)===ACC;
+  if(!ok){m.textContent=t('cpBad');return}
+  const np=normPw($('cpN').value);if(!np){m.textContent=t('cpEmpty');return}
+  LS.set('he_pw',sha256('he|'+np));m.className='err ok';m.textContent=t('cpOk');$('cpA').value='';$('cpN').value='';
+};
+
+$('act').onclick=()=>{S.p===1?carAct():doAct()};
+window.addEventListener('resize',resize);
+resize();resetSim();resetCar();setPart(S.p===1?1:0);applyLang();requestAnimationFrame(loop);
+})();
+</script>
+</body>
+</html>
